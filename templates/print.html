@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview & Print</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #d4d4d4;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: -20px 18px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+            width: 100%;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            width: 200px;
+            padding: 15px;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 4px 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        #preview-container {
+            display: none;
+        }
+
+        .preview {
+            width: 8cm;
+            height: 5cm;
+            border: 1px solid black;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .preview img {
+            max-width: 100px;
+            position: absolute;
+            top: 5px;
+            left: 5px;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        #searchResults {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .autocomplete-suggestions {
+            position: absolute;
+            width: 94%;
+            background: white;
+            border: 1px solid #ddd;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .autocomplete-suggestions div {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .autocomplete-suggestions div:hover {
+            background-color: #e0e0e0;
+        }
+        .back-btn {
+            width: 200px;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff7eb3, #ff758c);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .back-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 4px 6px 15px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    
+    <div class="container">
+        <h2 style="text-align: center; text-decoration: underline;">Preview & Print</h2>
+        
+        <label style="font-weight: bold;">Part No.</label>
+        <input type="text" id="part_no" onkeyup="searchStickerProduct()" placeholder="Enter Part No.">
+        
+        <div id="searchResults"></div>
+
+        <label style="font-weight: bold;">Bill Number</label>
+        <input type="text" id="bill_no" placeholder="Enter Bill Number">
+
+        <label style="font-weight: bold;">Quantity</label>
+        <input type="number" id="quantity" placeholder="Enter Quantity">
+
+        <label style="font-weight: bold;">Number of Boxes</label>
+        <input type="number" id="boxes" placeholder="Enter Number Of Boxes">
+
+        <div class="button-container">
+            <div class="card" onclick="generateSticker()">Generate Sticker</div>
+            <div class="card" onclick="printStickers()" id="printBtn" style="display: none;">Save Data & Print Stickers</div>
+        </div>
+
+        <div class="button-container">
+            <div class="back-btn" onclick="window.location.href='/'">Back to Dashboard</div>
+        </div>
+        <div id="preview-container"></div>
+
+        <canvas id="stickerCanvas"></canvas>
+    </div>
+
+    <script>
+        function searchStickerProduct() {
+            const partNo = document.getElementById("part_no").value;
+            if (partNo.length < 2) return;
+
+            fetch(`/sticker_search?part_no=${partNo}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById("searchResults");
+                    resultsDiv.innerHTML = "";  // Clear previous results
+
+                    if (data.length > 0) {
+                        let suggestionsHTML = "<ul style='list-style:none; padding:0; border:1px solid #ccc; background:white; position:absolute; z-index:1000; max-height:200px; overflow-y:auto;'>";
+                        data.forEach(item => {
+                            suggestionsHTML += `<li style="padding: 5px; cursor:pointer; border-bottom: 1px solid #ddd;" 
+                                                 onmouseover="this.style.background='#f0f0f0'" 
+                                                 onmouseout="this.style.background='white'"
+                                                 onclick='selectStickerProduct(${JSON.stringify(item)})'>
+                                                 ${item.part_no} - ${item.part_name}
+                                               </li>`;
+                        });
+                        suggestionsHTML += "</ul>";
+                        resultsDiv.innerHTML = suggestionsHTML;
+                    } else {
+                        resultsDiv.innerHTML = "<p>No results found</p>";
+                    }
+                })
+                .catch(error => console.error("Error fetching product:", error));
+        }
+
+        function selectStickerProduct(product) {
+            document.getElementById("part_no").value = product.part_no;
+            document.getElementById("searchResults").innerHTML = "";
+        }
+
+        async function generateSticker() {
+            const billNo = document.getElementById("bill_no").value;
+            const quantity = document.getElementById("quantity").value;
+            const boxes = document.getElementById("boxes").value;
+            const partNo = document.getElementById("part_no").value;
+
+            if (!billNo || !quantity || !boxes || !partNo) {
+                alert("Please enter all required fields.");
+                return;
+            }
+
+            const response = await fetch(`/sticker_search?part_no=${partNo}`);
+            const data = await response.json();
+
+            if (data.length === 0 || !data[0].part_name) {
+                alert("Part Name not found!");
+                return;
+            }
+            const partName = data[0].part_name;
+
+            console.log(partName);
+            const customer = data[0].customer || "Unknown Customer"; 
+            const previewContainer = document.getElementById("preview-container");
+            previewContainer.innerHTML = ""; // Clear previous previews
+            previewContainer.style.display = "block";
+
+            document.getElementById("printBtn").style.display = "block"; // Show print button
+
+            // Create an array to hold the sticker images
+            const stickerImages = [];
+
+            // Generate stickers in ascending order by box number
+            for (let i = 1; i <= boxes; i++) {
+                const img = await createStickerImage(partNo, partName, customer, billNo, quantity, boxes, i);
+                stickerImages.push(img);
+            }
+
+            // Append the images to the preview container in ascending order
+            stickerImages.forEach(img => {
+                previewContainer.appendChild(img);
+            });
+        }
+
+        function createStickerImage(partNo, partName, customer, billNo, quantity, boxes, boxNo) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement("canvas");
+                canvas.width = 300;  // 8 cm width
+                canvas.height = 188; // 5 cm height
+
+                const ctx = canvas.getContext("2d");
+
+                const logo = new Image();
+                logo.src = "static/logo.png";  // Ensure the image is in the correct directory
+                const now = new Date();
+                const formattedDate = now.toLocaleDateString("en-GB");  // Format: DD/MM/YYYY
+                const formattedTime = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); // Format: HH:MM
+
+                logo.onload = function () {
+                    // Background
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    // Draw Logo
+                    ctx.drawImage(logo, 10, 10, 90, 35);
+
+                    // Text Style
+                    ctx.fillStyle = "black";
+                    ctx.font = "bold 13px Arial";
+
+                    // Company Name with Underline
+                    ctx.fillText("OMCO ENTERPRISES PVT. LTD.", 100, 30);
+                    ctx.beginPath();
+                    ctx.moveTo(100, 32);
+                    ctx.lineTo(300, 32);
+                    ctx.stroke();
+
+                    // Product Details (Bold Titles, Normal Values)
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Part Name:", 20, 70);
+                    ctx.font = "14px Arial"; // Normal text for value
+                    ctx.fillText(partName, 110, 70);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Part No.:", 20, 88);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(partNo, 110, 88);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Bill No.:", 20, 105);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(billNo, 110, 105);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Date:", 20, 120);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(formattedDate, 110, 120);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Qty.:", 20, 135);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(`${quantity} NOS`, 110, 135);
+
+                    // Make "To:" bold but customer name normal
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("To:", 20, 150);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(`M/s ${customer}`, 70, 150);
+
+                    ctx.font = "bold 14px Arial";  // Set font to bold
+                    const boxText = `Box No. ${boxNo} of ${boxes}`;
+                    ctx.fillText(boxText, 20, 180);
+
+                    // Measure width of "Box No." text to determine spacing
+                    const boxTextWidth = ctx.measureText(boxText).width;
+
+                    // Set font back to normal for time
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText(`${formattedTime}`, 80 + boxTextWidth, 180);
+
+                    // Convert Canvas to Image
+                    const img = new Image();
+                    img.src = canvas.toDataURL();
+                    img.classList.add("preview");
+
+                    // Resolve the promise with the image
+                    resolve(img);
+                };
+            });
+        }
+
+        async function printStickers() {
+            const partNo = document.getElementById("part_no").value;
+            const billNo = document.getElementById("bill_no").value;
+            const quantity = document.getElementById("quantity").value;
+            const boxes = document.getElementById("boxes").value;
+
+            if (!partNo || !billNo || !quantity || !boxes) {
+                alert("Please enter all required fields.");
+                return;
+            }
+
+            const response = await fetch(`/sticker_search?part_no=${partNo}`);
+            const data = await response.json();
+
+            if (data.length === 0 || !data[0].part_name) {
+                alert("Part Name not found!");
+                return;
+            }
+
+            const partName = data[0].part_name;
+            const customer = data[0].customer || "Unknown Customer";
+
+            // Send data to backend for saving
+            try {
+                const saveResponse = await fetch('/save_sticker_data', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        part_no: partNo,
+                        part_name: partName,
+                        customer: customer,
+                        qty: quantity,
+                        bill_no: billNo,
+                        boxes: boxes
+                    })
+                });
+
+                const saveResult = await saveResponse.json();
+                if (saveResult.error) {
+                    alert("Error saving data: " + saveResult.error);
+                    return;
+                }
+            } catch (error) {
+                console.error("Error saving sticker data:", error);
+                return;
+            }
+
+            // Proceed to print stickers
+            const images = document.querySelectorAll("#preview-container img");
+            const printWindow = window.open("", "_blank");
+            printWindow.document.write("<html><head><title>Print Stickers</title></head><body>");
+
+            images.forEach(img => {
+                printWindow.document.write(`<div style="page-break-after: always;"><img src='${img.src}' style='width:8cm; height:5cm;'></div>`);
+            });
+
+            printWindow.document.write("</body></html>");
+            printWindow.document.close();
+            printWindow.onload = function () {
+                printWindow.print();
+                printWindow.close();
+            };
+        }
+    </script>
+</body>
+</html>

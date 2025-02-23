@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Product</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #d4d4d4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: -20px 18px 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-decoration: underline;
+        }
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+        }
+        input {
+            padding: 10px;
+            width: 95%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            width: 75%;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        #preview {
+            margin-top: 15px;
+            font-weight: bold;
+            display: none;
+        }
+        .back-btn{
+            background: linear-gradient(135deg, #ff7eb3, #ff758c);
+
+        }
+        </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Add Product</h2>
+        <form id="product-form">
+            <div class="form-group">
+                <label>Part No.</label>
+                <input type="text" id="part_no" required placeholder="Enter Part No.">
+            </div>
+            <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" id="description" required placeholder="Enter Part Name">
+            </div>
+            <div class="form-group">
+                <label>Customer</label>
+                <input type="text" id="customer" required placeholder="Enter Customer Name">
+            </div>
+            <button type="button" onclick="previewProduct()">Preview</button>
+            <div id="preview"></div>
+            <button type="submit">Submit</button>
+        </form>
+        <button class="back-btn" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+    </div>
+    
+    <script>
+        function previewProduct() {
+            let part_no = document.getElementById("part_no").value;
+            let description = document.getElementById("description").value;
+            let customer = document.getElementById("customer").value;
+            document.getElementById("preview").style.display = 'block';
+            document.getElementById("preview").innerHTML = `<strong>Preview:</strong> ${part_no} - ${description} - ${customer}`;
+        }
+
+        document.getElementById("product-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            let part_no = document.getElementById("part_no").value;
+            let part_name = document.getElementById("description").value;
+            let customer = document.getElementById("customer").value;
+            fetch("/add_product", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ part_no, part_name, customer })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                document.getElementById("product-form").reset();
+                document.getElementById("preview").innerHTML = "";
+            });
+        });
+    </script>
+</body>
+</html>

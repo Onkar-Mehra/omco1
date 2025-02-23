@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Upload</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #d4d4d4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: -20px 18px 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-decoration: underline;
+        }
+        input{
+            padding: 10px;
+            width: 97%;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            padding: 10px;
+            width: 51%;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #6e8efb;
+            color: white;
+        }
+        .back-btn{
+            background: linear-gradient(135deg, #ff7eb3, #ff758c);
+
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Bulk Upload</h2>
+        <input type="file" id="excel-file">
+        <button onclick="previewExcel()">Preview</button>
+        <button id="upload-btn" onclick="uploadExcel()">Upload</button>
+        <button class="back-btn" onclick="window.location.href='/'">Back to Dashboard</button>
+        <div class="table-container" id="bulk-preview"></div>
+    </div>
+    <script>
+        let previewData = [];
+        function previewExcel() {
+            let file = document.getElementById("excel-file").files[0];
+            if (!file) {
+                alert("Please select an Excel file.");
+                return;
+            }
+            let formData = new FormData();
+            formData.append("file", file);
+            fetch("/preview_bulk_upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                previewData = data;
+                let table = "<table><tr>";
+                let headers = Object.keys(data[0]).reverse();
+                headers.forEach(header => {
+                    table += `<th>${header}</th>`;
+                });
+                table += "</tr>";
+                data.forEach(row => {
+                    table += "<tr>";
+                    headers.forEach(header => {
+                        table += `<td>${row[header]}</td>`;
+                    });
+                    table += "</tr>";
+                });
+                table += "</table>";
+                document.getElementById("bulk-preview").innerHTML = table;
+            })
+            .catch(err => alert("Error previewing file: " + err));
+        }
+        function uploadExcel() {
+            if (previewData.length === 0) {
+                alert("No data to upload. Please preview first.");
+                return;
+            }
+            fetch("/upload_bulk_data", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ data: previewData })
+            })
+            .then(res => res.json())
+            .then(data => alert(data.message))
+            .catch(err => alert("Error uploading data: " + err));
+        }
+    </script>
+</body>
+</html>

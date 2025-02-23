@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticker Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: #d4d4d4;
+        }
+        form {
+            width: 500px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: -20px 18px 10px rgba(0, 0, 0, 0.1);        }
+        label {
+            margin-top: 10px;
+        }
+        input {
+            padding:10px;
+            margin-top: 5px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px;
+            border: none;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 2px 4px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 60%;
+        }
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 4px 6px 15px rgba(0, 0, 0, 0.15);
+        }
+        #preview-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .preview {
+            width: 8cm;
+            height: 5cm;
+            border: 1px solid black;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+        .preview img {
+            max-width: 100px;
+            position: absolute;
+            top: 5px;
+            left: 5px;
+        }
+        canvas {
+            display: none;
+        }
+        .back-btn{
+            background: linear-gradient(135deg, #ff7eb3, #ff758c);
+        }
+    </style>
+</head>
+<body>
+
+    
+    <form id="stickerForm">
+        <h2 style="text-align: center; text-decoration: underline;">Create a Sticker</h2>
+        <label style="font-weight: bold;">Part No.</label>
+        <input type="text" id="part_no" required placeholder="Enter Part No.">
+
+        <label style="font-weight: bold;">Part Name</label>
+        <input type="text" id="part_name" required placeholder="Enter Part Name">
+
+        <label style="font-weight: bold;">Customer</label>
+        <input type="text" id="customer" required placeholder="Enter Customer Name">
+
+        <label style="font-weight: bold;">Bill No.</label>
+        <input type="text" id="bill_no" required placeholder="Enter Bill No.">
+
+        <label style="font-weight: bold;">Quantity</label>
+        <input type="number" id="quantity" required placeholder="Enter Quantity">
+
+        <label style="font-weight: bold;">Number of Boxes</label>
+        <input type="number" id="boxes" required placeholder="Enter Number Of Boxes">
+
+<div style="display: flex; flex-direction: column; align-items: center;">
+    <button type="button" onclick="generateSticker()">Preview</button>
+    <button type="button" onclick="saveAndPrint()">Save & Print</button>
+    <button class="back-btn" onclick="window.location.href='/'">Back to Dashboard</button>
+    <div id="preview-container"></div>
+</div>
+
+        
+    </form>
+
+
+    <script>
+        function generateSticker() {
+            const partNo = document.getElementById("part_no").value;
+            const partName = document.getElementById("part_name").value;
+            const customer = document.getElementById("customer").value;
+            const billNo = document.getElementById("bill_no").value;
+            const quantity = document.getElementById("quantity").value;
+            const boxes = document.getElementById("boxes").value;
+
+            if (!partNo || !partName || !customer || !billNo || !quantity || !boxes) {
+                alert("Please fill all fields!");
+                return;
+            }
+
+            const previewContainer = document.getElementById("preview-container");
+            previewContainer.innerHTML = "";
+            previewContainer.style.display = "block";
+
+            for (let i = 1; i <= boxes; i++) {
+                createStickerImage(partNo, partName, customer, billNo, quantity, boxes, i).then(img => {
+                    previewContainer.appendChild(img);
+                });
+            }
+        }
+
+        async function saveAndPrint() {
+            const partNo = document.getElementById("part_no").value;
+            const partName = document.getElementById("part_name").value;
+            const customer = document.getElementById("customer").value;
+            const billNo = document.getElementById("bill_no").value;
+            const quantity = document.getElementById("quantity").value;
+            const boxes = document.getElementById("boxes").value;
+
+            if (!partNo || !partName || !customer || !billNo || !quantity || !boxes) {
+                alert("Please fill all fields!");
+                return;
+            }
+
+            const response = await fetch('/save_sticker_data', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    part_no: partNo,
+                    part_name: partName,
+                    customer: customer,
+                    qty: quantity,
+                    bill_no: billNo,
+                    boxes: boxes
+                })
+            });
+
+            const result = await response.json();
+            if (result.error) {
+                alert("Error saving data: " + result.error);
+                return;
+            }
+
+            generateSticker();  
+            setTimeout(() => printStickers(), 500);
+        }
+
+        function printStickers() {
+            const images = document.querySelectorAll("#preview-container img");
+            const printWindow = window.open("", "_blank");
+            printWindow.document.write("<html><head><title>Print Stickers</title></head><body>");
+
+            images.forEach(img => {
+                printWindow.document.write(`<div style="page-break-after: always;"><img src='${img.src}' style='width:8cm; height:5cm;'></div>`);
+            });
+
+            printWindow.document.write("</body></html>");
+            printWindow.document.close();
+            printWindow.onload = function () {
+                printWindow.print();
+                printWindow.close();
+            };
+        }
+
+        function createStickerImage(partNo, partName, customer, billNo, quantity, boxes, boxNo) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement("canvas");
+                canvas.width = 300;  
+                canvas.height = 188;  
+
+                const ctx = canvas.getContext("2d");
+
+                const logo = new Image();
+                logo.src = "/static/logo.png";  
+                const now = new Date();
+                const formattedDate = now.toLocaleDateString("en-GB");
+                const formattedTime = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+                logo.onload = function () {
+                    ctx.fillStyle = "white";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(logo, 10, 10, 90, 35);
+
+                    ctx.fillStyle = "black";
+                    ctx.font = "bold 13px Arial";
+
+                    ctx.fillText("OMCO ENTERPRISES PVT. LTD.", 100, 30);
+                    ctx.beginPath();
+                    ctx.moveTo(100, 32);
+                    ctx.lineTo(300, 32);
+                    ctx.stroke();
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Part Name:", 20, 70);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(partName, 110, 70);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Part No.:", 20, 88);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(partNo, 110, 88);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Bill No.:", 20, 105);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(billNo, 110, 105);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Date:", 20, 120);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(formattedDate, 110, 120);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("Qty.:", 20, 135);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(`${quantity} NOS`, 110, 135);
+
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText("To:", 20, 150);
+                    ctx.font = "14px Arial";
+                    ctx.fillText(`M/s ${customer}`, 70, 150);
+
+                    ctx.font = "bold 14px Arial";
+                    const boxText = `Box No. ${boxNo} of ${boxes}`;
+                    ctx.fillText(boxText, 20, 180);
+
+                    ctx.fillText(`${formattedTime}`, 230, 180);
+
+                    const img = new Image();
+                    img.src = canvas.toDataURL();
+                    img.classList.add("preview");
+                    resolve(img);
+                };
+            });
+        }
+    </script>
+
+</body>
+</html>
