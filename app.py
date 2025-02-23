@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, send_file
-import pymysql
 import pandas as pd
 import os
 import io
@@ -7,11 +6,20 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
+PRODUCTS_FILE = 'products.xlsx'
+SAVED_DATA_FILE = 'savedata.xlsx'
 
-# MySQL Database Connection
+# Excel file path
+if not os.path.exists(PRODUCTS_FILE):
+    df = pd.DataFrame(columns=['part_no', 'part_name', 'customer'])
+    df.to_excel(PRODUCTS_FILE, index=False)
+
+# Ensure the saved sticker data file exists
+if not os.path.exists(SAVED_DATA_FILE):
+    df = pd.DataFrame(columns=['part_no', 'part_name', 'customer', 'qty', 'bill_no', 'boxes', 'date_time'])
+    df.to_excel(SAVED_DATA_FILE, index=False)
 
 # Route to serve the dashboard
-
 @app.route('/')
 def login():
     return render_template('login.html')
@@ -21,7 +29,7 @@ def dashboard():
     return render_template('dashboard.html')
 
 # Route to serve Add Product Page
-@app.route('/add_product')
+@app.route('/product')
 def add_product():
     return render_template('add_product.html')
 
@@ -39,42 +47,33 @@ def search_page():
 def print_page():
     return render_template('print.html')
 
-
 # API to add a single product
-
-db_config = {
-    "host": os.getenv("MYSQL_HOST"),
-    "user": os.getenv("MYSQL_USER"),
-    "password": os.getenv("MYSQL_PASSWORD"),
-    "database": os.getenv("MYSQL_DATABASE"),
-    "port": int(os.getenv("MYSQL_PORT", 3306)),
-    "cursorclass": pymysql.cursors.DictCursor
-}
-
-# Connect to the database
-try:
-    db = pymysql.connect(**db_config)
-    print("Database connection successful!")
-except pymysql.err.OperationalError as e:
-    print("Database connection failed:", e)
 @app.route('/add_product', methods=['POST'])
 def add_product_api():
-    data = request.json
-    part_no = data.get("part_no")
-    part_name = data.get("part_name")
-    customer = data.get("customer")
-
-    if not part_no or not part_name or not customer:
-        return jsonify({"error": "All fields are required"}), 400
-
     try:
-        with db.cursor() as cursor:
-            sql = "INSERT INTO products (part_no, part_name, customer) VALUES (%s, %s, %s)"
-            cursor.execute(sql, (part_no, part_name, customer))
-            db.commit()
+        data = request.get_json()
+        print("Received Data:", data)  # Debugging
+
+        part_no = data.get("part_no")
+        part_name = data.get("part_name")
+        customer = data.get("customer")
+
+        if not part_no or not part_name or not customer:
+            return jsonify({"error": "All fields are required"}), 400
+
+        df = pd.read_excel(PRODUCTS_FILE)
+        new_row = {'part_no': part_no, 'part_name': part_name, 'customer': customer}
+        
+        
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        
+        df.to_excel(PRODUCTS_FILE, index=False)
+
         return jsonify({"message": "Product added successfully!"})
     except Exception as e:
+        print("Error:", str(e))  # Debugging
         return jsonify({"error": str(e)}), 500
+
 
 # API to handle bulk upload
 @app.route('/preview_bulk_upload', methods=['POST'])
@@ -95,7 +94,7 @@ def preview_bulk_upload():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# API to upload bulk data to MySQL
+# API to upload bulk data to Excel
 @app.route('/upload_bulk_data', methods=['POST'])
 def upload_bulk_data():
     try:
@@ -103,79 +102,97 @@ def upload_bulk_data():
         if not data:
             return jsonify({"error": "No data received"}), 400
 
-        with db.cursor() as cursor:
-            for row in data:
-                part_no = row.get("PART NO.")
-                part_name = row.get("PART NAME")
-                customer = row.get("CUSTOMER")
+        df = pd.read_excel(PRODUCTS_FILE)  # Load existing data
 
-                if not part_no or not part_name or not customer:
-                    continue  # Skip rows with missing data
+        for row in data:
+            part_no = row.get("PART NO.")  # Ensure column names match
+            part_name = row.get("PART NAME")
+            customer = row.get("CUSTOMER")
 
-                sql = "INSERT INTO products (part_no, part_name, customer) VALUES (%s, %s, %s)"
-                cursor.execute(sql, (part_no, part_name, customer))
+            if not part_no or not part_name or not customer:
+                continue  # Skip rows with missing data
 
-            db.commit()
+            new_row = {'part_no': part_no, 'part_name': part_name, 'customer': customer}
+            
+          
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+        df.to_excel(PRODUCTS_FILE, index=False)  # Save back to products.xlsx
 
         return jsonify({"message": "Bulk upload successful!"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
 # API to search for products
 @app.route('/search', methods=['GET'])
 def search_product():
-    part_no = request.args.get('part_no', '')
-    part_name = request.args.get('part_name', '')
-    customer = request.args.get('customer', '')
+    part_no = request.args.get('part_no', '').strip()
+    part_name = request.args.get('part_name', '').strip()
+    customer = request.args.get('customer', '').strip()
 
     try:
-        with db.cursor() as cursor:
-            sql = """SELECT * FROM products 
-                     WHERE part_no LIKE %s 
-                     AND part_name LIKE %s
-                     AND customer LIKE %s"""
-            cursor.execute(sql, (f"%{part_no}%", f"%{part_name}%", f"%{customer}%"))
-            result = cursor.fetchall()
-            print("Search results:", result)  # Debugging
+        df = pd.read_excel(PRODUCTS_FILE)
+        df = df.astype(str)  # Convert all fields to string to prevent NaN issues
+
+        # Apply filters only if values are provided
+        if part_no:
+            df = df[df['part_no'].str.contains(part_no, case=False, na=False)]
+        if part_name:
+            df = df[df['part_name'].str.contains(part_name, case=False, na=False)]
+        if customer:
+            df = df[df['customer'].str.contains(customer, case=False, na=False)]
+
+        result = df.to_dict(orient="records")
+        print("Search Results:", result)  # Debugging
+
         return jsonify(result)
     except Exception as e:
-        print("Error:", str(e))  # Debugging
+        print("Search API Error:", str(e))  # Debugging
         return jsonify({"error": str(e)}), 500
             
 @app.route('/suggestions', methods=['GET'])
 def get_suggestions():
     field = request.args.get('field', '')
     query = request.args.get('query', '')
+    print(field)
+    print(query)
 
     if field not in ["part_no", "part_name", "customer"] or not query:
         return jsonify([])
 
     try:
-        with db.cursor() as cursor:
-            sql = f"SELECT DISTINCT {field} FROM products WHERE {field} LIKE %s LIMIT 10"
-            cursor.execute(sql, (f"%{query}%",))
-            results = [row[field] for row in cursor.fetchall()]
-        return jsonify(results)
+        df = pd.read_excel(PRODUCTS_FILE)
+        print(df)
+        df[field] = df[field].astype(str)  # Ensure all values are strings
+        results = df[df[field].str.contains(query, case=False, na=False)][field].unique().tolist()
+        print(results)
+        return jsonify(results[:10])  # Limit to 10 suggestions
     except Exception as e:
+        print("Error in suggestions API:", str(e))  # Debugging
         return jsonify({"error": str(e)}), 500
     
-
 @app.route('/sticker_search', methods=['GET'])
 def sticker_search():
-    part_no = request.args.get('part_no', '')
-    try:
-        with db.cursor() as cursor:
-            sql = "SELECT part_no, part_name, customer FROM products WHERE part_no LIKE %s LIMIT 20"
-            cursor.execute(sql, (f"%{part_no}%",))
-            result = cursor.fetchall()
+    part_no = request.args.get('part_no', '').strip()
 
-        if result:
-            return jsonify(result)  # Return all matching results
-        else:
-            return jsonify([])  # Return empty list instead of an error
+    if not part_no:
+        return jsonify([])
+
+    try:
+        df = pd.read_excel(PRODUCTS_FILE)
+        df = df.astype(str)  # Convert all fields to string to prevent NaN issues
+
+        # Filter the dataframe based on part number
+        filtered_df = df[df['part_no'].str.contains(part_no, case=False, na=False)]
+
+        results = filtered_df[['part_no', 'part_name']].to_dict(orient="records")
+        print("Sticker Search Results:", results)  # Debugging
+
+        return jsonify(results[:10])  # Limit to 10 results
     except Exception as e:
+        print("Error in sticker search API:", str(e))  # Debugging
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/generate_sticker_pdf', methods=['POST'])
 def generate_sticker_pdf():
@@ -238,7 +255,7 @@ def save_sticker_data():
     part_no = data.get("part_no")
     part_name = data.get("part_name")
     customer = data.get("customer")
-    qty=data.get("qty")
+    qty = data.get("qty")
     bill_no = data.get("bill_no")
     boxes = data.get("boxes")
     timestamp = pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -247,15 +264,29 @@ def save_sticker_data():
         return jsonify({"error": "Missing required fields"}), 400
 
     try:
-        with db.cursor() as cursor:
-            sql = """
-                INSERT INTO savedata (part_no, part_name, customer, qty, bill_no, boxes, date_time)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(sql, (part_no, part_name, customer, qty, bill_no, boxes, timestamp))
-            db.commit()
+        # Load existing data from savedata.xlsx
+        df = pd.read_excel(SAVED_DATA_FILE)
+
+        # Create a new row
+        new_row = pd.DataFrame([{
+            'part_no': part_no, 
+            'part_name': part_name, 
+            'customer': customer, 
+            'qty': qty, 
+            'bill_no': bill_no, 
+            'boxes': boxes, 
+            'date_time': timestamp
+        }])
+
+        # Use pd.concat() instead of append()
+        df = pd.concat([df, new_row], ignore_index=True)
+
+        # Save back to Excel
+        df.to_excel(SAVED_DATA_FILE, index=False)
+
         return jsonify({"message": "Sticker data saved successfully!"})
     except Exception as e:
+        print("Error saving sticker data:", str(e))  # Debugging
         return jsonify({"error": str(e)}), 500
 
 @app.route('/saved_data')
@@ -265,17 +296,16 @@ def saved_data():
 @app.route('/get_saved_data', methods=['GET'])
 def get_saved_data():
     try:
-        with db.cursor() as cursor:
-            cursor.execute("SELECT * FROM savedata ORDER BY date_time DESC")
-            result = cursor.fetchall()
+        df = pd.read_excel(SAVED_DATA_FILE)
+        result = df.to_dict(orient="records")
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route('/input')
 def input_page():
     return render_template('input.html')
-
 
 if __name__ == '__main__':
     app.run(debug=True)

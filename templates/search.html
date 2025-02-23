@@ -117,7 +117,7 @@
 
         <div class="button-container">
             <button class="search-btn" onclick="searchProduct(event)">Search</button>
-            <button class="back-btn" onclick="window.location.href='/'">Back to Dashboard</button>
+            <button class="back-btn" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
         </div>
 
         <div id="search-results"></div>
@@ -125,76 +125,92 @@
 
     <script>
         function getSuggestions(field, value) {
-            let suggestionsDiv = document.getElementById(`suggestions-${field}`);
-            if (!suggestionsDiv) return;
+    let suggestionsDiv = document.getElementById(`suggestions-${field}`);
+    if (!suggestionsDiv) return;
 
-            if (value.length < 2) {
+    if (value.length < 2) {
+        suggestionsDiv.innerHTML = "";
+        suggestionsDiv.style.display = "none";
+        return;
+    }
+
+    console.log(`Fetching suggestions for ${field} with query:`, value);
+
+    fetch(`/suggestions?field=${field}&query=${encodeURIComponent(value)}`)
+        .then(res => res.json())
+        .then(data => {
+            console.log("Suggestions received:", data);
+            if (data.length === 0) {
                 suggestionsDiv.innerHTML = "";
                 suggestionsDiv.style.display = "none";
                 return;
             }
 
-            fetch(`/suggestions?field=${field}&query=${value}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.length === 0) {
-                        suggestionsDiv.innerHTML = "";
-                        suggestionsDiv.style.display = "none";
-                        return;
+            suggestionsDiv.innerHTML = "";
+            suggestionsDiv.style.display = "block";
+            data.forEach(item => {
+                let div = document.createElement("div");
+                div.innerText = item;
+                div.onclick = function () {
+                    console.log("Suggestion clicked:", item);
+                    let inputField = document.getElementById(`search-${field}`);
+                    if (inputField) {
+                        inputField.value = item; // Set input field with selected suggestion
+                        inputField.setAttribute("data-selected", "true"); // Store that the value was selected
                     }
                     suggestionsDiv.innerHTML = "";
-                    suggestionsDiv.style.display = "block";
-                    data.forEach(item => {
-                        let div = document.createElement("div");
-                        div.innerText = item;
-                        div.onclick = function() {
-                            console.log("Suggestion clicked:", item); // Debugging
-                            let inputField = document.getElementById(`search-${field}`);
-                            if (inputField) {
-                                inputField.value = item;
-                            } else {
-                                console.error("Input field not found for ID:", `search-${field}`);
-                            }
-                            suggestionsDiv.innerHTML = "";
-                            suggestionsDiv.style.display = "none";
-                        };
-                        suggestionsDiv.appendChild(div);
-                    });
-                });
-        }
+                    suggestionsDiv.style.display = "none";
+                };
+                suggestionsDiv.appendChild(div);
+            });
+        })
+        .catch(error => console.error("Error fetching suggestions:", error));
+}
 
-        function searchProduct(event) {
-            if (event) event.preventDefault(); // Prevent default form submission
 
-            let resultDiv = document.getElementById("search-results");
-            if (!resultDiv) return;
 
-            let part_no = document.getElementById("search-part_no").value;
-            let part_name = document.getElementById("search-part_name").value;
-            let customer = document.getElementById("search-customer").value;
+function searchProduct(event) {
+    if (event) event.preventDefault(); // Prevent default form submission
 
-            fetch(`/search?part_no=${encodeURIComponent(part_no)}&part_name=${encodeURIComponent(part_name)}&customer=${encodeURIComponent(customer)}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (!Array.isArray(data) || data.length === 0) {
-                        resultDiv.innerHTML = "<p>No results found</p>";
-                        return;
-                    }
+    let resultDiv = document.getElementById("search-results");
+    if (!resultDiv) return;
 
-                    let resultHTML = "<table><tr><th>SR.NO</th><th>PART NO.</th><th>PART NAME</th><th>CUSTOMER</th></tr>";
-                    data.forEach(item => {
-                        resultHTML += `<tr>
-                            <td>${item.sr_no || "-"}</td>
-                            <td>${item.part_no}</td>
-                            <td>${item.part_name}</td>
-                            <td>${item.customer}</td>
-                        </tr>`;
-                    });
-                    resultHTML += "</table>";
-                    resultDiv.innerHTML = resultHTML;
-                })
-                .catch(error => console.error("Error fetching search results:", error));
-        }
+    let part_no_input = document.getElementById("search-part_no");
+    let part_name_input = document.getElementById("search-part_name");
+    let customer_input = document.getElementById("search-customer");
+
+    // Get values correctly
+    let part_no = part_no_input.getAttribute("data-selected") === "true" ? part_no_input.value : "";
+    let part_name = part_name_input.getAttribute("data-selected") === "true" ? part_name_input.value : "";
+    let customer = customer_input.getAttribute("data-selected") === "true" ? customer_input.value : "";
+
+    console.log("Searching with:", { part_no, part_name, customer });
+
+    fetch(`/search?part_no=${encodeURIComponent(part_no)}&part_name=${encodeURIComponent(part_name)}&customer=${encodeURIComponent(customer)}`)
+        .then(res => res.json())
+        .then(data => {
+            console.log("Search Results:", data); // Debugging
+
+            if (!Array.isArray(data) || data.length === 0) {
+                resultDiv.innerHTML = "<p>No results found</p>";
+                return;
+            }
+
+            let resultHTML = "<table><tr><th>SR.NO</th><th>PART NO.</th><th>PART NAME</th><th>CUSTOMER</th></tr>";
+            data.forEach((item, index) => {
+                resultHTML += `<tr>
+                    <td>${index + 1}</td>
+                    <td>${item.part_no}</td>
+                    <td>${item.part_name}</td>
+                    <td>${item.customer}</td>
+                </tr>`;
+            });
+            resultHTML += "</table>";
+            resultDiv.innerHTML = resultHTML;
+        })
+        .catch(error => console.error("Error fetching search results:", error));
+}
+
     </script>
 </body>
 </html>

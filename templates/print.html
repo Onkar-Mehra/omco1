@@ -98,28 +98,32 @@
             width: 100%;
             max-width: 400px;
         }
+        #searchResults {
+    position: absolute;
+    width: calc(100% - 20px);
+    background: white;
+    border: 1px solid #ddd;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    display: none; /* Ensure it remains hidden initially */
+}
 
-        .autocomplete-suggestions {
-            position: absolute;
-            width: 94%;
-            background: white;
-            border: 1px solid #ddd;
-            max-height: 150px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-            display: none;
-        }
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    background-color: white;
+    font-size: 16px;
+}
 
-        .autocomplete-suggestions div {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
-        }
+.suggestion-item:hover {
+    background-color: #e0e0e0;
+}
 
-        .autocomplete-suggestions div:hover {
-            background-color: #e0e0e0;
-        }
+
+
         .back-btn {
             width: 200px;
             padding: 15px;
@@ -136,6 +140,7 @@
             transform: translateY(-5px);
             box-shadow: 4px 6px 15px rgba(0, 0, 0, 0.15);
         }
+
     </style>
 </head>
 <body>
@@ -145,9 +150,11 @@
         <h2 style="text-align: center; text-decoration: underline;">Preview & Print</h2>
         
         <label style="font-weight: bold;">Part No.</label>
+        <label style="font-weight: bold;">Part No.</label>
         <input type="text" id="part_no" onkeyup="searchStickerProduct()" placeholder="Enter Part No.">
-        
+        <!-- The suggestions dropdown must be here -->
         <div id="searchResults"></div>
+
 
         <label style="font-weight: bold;">Bill Number</label>
         <input type="text" id="bill_no" placeholder="Enter Bill Number">
@@ -164,7 +171,7 @@
         </div>
 
         <div class="button-container">
-            <div class="back-btn" onclick="window.location.href='/'">Back to Dashboard</div>
+            <div class="back-btn" onclick="window.location.href='/dashboard'">Back to Dashboard</div>
         </div>
         <div id="preview-container"></div>
 
@@ -172,39 +179,55 @@
     </div>
 
     <script>
-        function searchStickerProduct() {
-            const partNo = document.getElementById("part_no").value;
-            if (partNo.length < 2) return;
+function searchStickerProduct() {
+    const partNo = document.getElementById("part_no").value;
+    const resultsDiv = document.getElementById("searchResults");
 
-            fetch(`/sticker_search?part_no=${partNo}`)
-                .then(response => response.json())
-                .then(data => {
-                    const resultsDiv = document.getElementById("searchResults");
-                    resultsDiv.innerHTML = "";  // Clear previous results
+    if (partNo.length < 2) {
+        resultsDiv.innerHTML = "";
+        resultsDiv.style.display = "none";  // Hide the suggestions dropdown
+        return;
+    }
 
-                    if (data.length > 0) {
-                        let suggestionsHTML = "<ul style='list-style:none; padding:0; border:1px solid #ccc; background:white; position:absolute; z-index:1000; max-height:200px; overflow-y:auto;'>";
-                        data.forEach(item => {
-                            suggestionsHTML += `<li style="padding: 5px; cursor:pointer; border-bottom: 1px solid #ddd;" 
-                                                 onmouseover="this.style.background='#f0f0f0'" 
-                                                 onmouseout="this.style.background='white'"
-                                                 onclick='selectStickerProduct(${JSON.stringify(item)})'>
-                                                 ${item.part_no} - ${item.part_name}
-                                               </li>`;
-                        });
-                        suggestionsHTML += "</ul>";
-                        resultsDiv.innerHTML = suggestionsHTML;
-                    } else {
-                        resultsDiv.innerHTML = "<p>No results found</p>";
-                    }
-                })
-                .catch(error => console.error("Error fetching product:", error));
-        }
+    fetch(`/sticker_search?part_no=${encodeURIComponent(partNo)}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log("Suggestions received:", data); // Debugging log
 
-        function selectStickerProduct(product) {
-            document.getElementById("part_no").value = product.part_no;
-            document.getElementById("searchResults").innerHTML = "";
-        }
+            resultsDiv.innerHTML = "";
+            if (data.length === 0) {
+                resultsDiv.style.display = "none"; // Hide if no results
+                return;
+            }
+
+            // Ensure dropdown is visible
+            resultsDiv.style.display = "block";
+            resultsDiv.innerHTML = `<div class='autocomplete-suggestions'></div>`;
+            let suggestionsContainer = resultsDiv.querySelector('.autocomplete-suggestions');
+
+            data.forEach(item => {
+                let suggestion = document.createElement("div");
+                suggestion.textContent = `${item.part_no} - ${item.part_name}`;
+                suggestion.classList.add("suggestion-item");
+
+                // Fix: Pass both Part No. and Part Name correctly
+                suggestion.onclick = function () {
+                    selectStickerProduct(item.part_no, item.part_name);
+                };
+
+                suggestionsContainer.appendChild(suggestion);
+            });
+
+            resultsDiv.appendChild(suggestionsContainer);
+        })
+        .catch(error => console.error("Error fetching product suggestions:", error));
+}
+
+function selectStickerProduct(partNo) {
+    document.getElementById("part_no").value = partNo;
+    document.getElementById("searchResults").style.display = "none"; // Hide suggestions after selection
+    console.log(`Selected part number: ${partNo}`);
+}
 
         async function generateSticker() {
             const billNo = document.getElementById("bill_no").value;
