@@ -42,26 +42,21 @@ def print_page():
 
 # API to add a single product
 
-# API to handle bulk upload
-print("MYSQL_HOST:", os.getenv("MYSQL_HOST"))
-print("MYSQL_USER:", os.getenv("MYSQL_USER"))
-print("MYSQL_PASSWORD:", os.getenv("MYSQL_PASSWORD"))
-print("MYSQL_DATABASE:", os.getenv("MYSQL_DATABASE"))
-print("MYSQL_PORT:", os.getenv("MYSQL_PORT"))
+db_config = {
+    "host": os.getenv("MYSQL_HOST"),
+    "user": os.getenv("MYSQL_USER"),
+    "password": os.getenv("MYSQL_PASSWORD"),
+    "database": os.getenv("MYSQL_DATABASE"),
+    "port": int(os.getenv("MYSQL_PORT", 3306)),
+    "cursorclass": pymysql.cursors.DictCursor
+}
 
+# Connect to the database
 try:
-    db = pymysql.connect(
-        host=os.getenv("MYSQL_HOST"),
-        user=os.getenv("MYSQL_USER"),
-        password=os.getenv("MYSQL_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-        port=int(os.getenv("MYSQL_PORT", 3306)),  # Default to 3306
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    db = pymysql.connect(**db_config)
     print("Database connection successful!")
 except pymysql.err.OperationalError as e:
     print("Database connection failed:", e)
-# API to add a single product
 @app.route('/add_product', methods=['POST'])
 def add_product_api():
     data = request.json
