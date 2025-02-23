@@ -44,13 +44,13 @@ def print_page():
 
 # API to handle bulk upload
 db = pymysql.connect(
-        host="mysql.railway.internal",  # MYSQL_HOST
-        user="root",  # MYSQL_USER
-        password="PCvXMJokWZbZMFQXJaMXpSmsbyWVdyYs",  # MYSQL_PASSWORD
-        database="railway",  # MYSQL_DATABASE
-        port=3306,  # MYSQL_PORT
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    host=os.getenv("MYSQL_HOST"),
+    user=os.getenv("MYSQL_USER"),
+    password=os.getenv("MYSQL_PASSWORD"),
+    database=os.getenv("MYSQL_DATABASE"),
+    port=int(os.getenv("MYSQL_PORT", 3306)),  # Default to 3306
+    cursorclass=pymysql.cursors.DictCursor
+)
 
 # API to add a single product
 @app.route('/add_product', methods=['POST'])
