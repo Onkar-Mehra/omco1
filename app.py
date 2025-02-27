@@ -142,7 +142,7 @@ def search_product():
         if customer:
             df = df[df['customer'].str.contains(customer, case=False, na=False)]
 
-        result = df.to_dict(orient="records")
+        result = df.reset_index().rename(columns={"index": "row_index"}).to_dict(orient="records")
         print("Search Results:", result)  # Debugging
 
         return jsonify(result)
@@ -185,13 +185,15 @@ def sticker_search():
         # Filter the dataframe based on part number
         filtered_df = df[df['part_no'].str.contains(part_no, case=False, na=False)]
 
-        results = filtered_df[['part_no', 'part_name']].to_dict(orient="records")
+        # Include 'customer' field in response
+        results = filtered_df[['part_no', 'part_name', 'customer']].to_dict(orient="records")
         print("Sticker Search Results:", results)  # Debugging
 
         return jsonify(results[:10])  # Limit to 10 results
     except Exception as e:
         print("Error in sticker search API:", str(e))  # Debugging
         return jsonify({"error": str(e)}), 500
+
 
 
 @app.route('/generate_sticker_pdf', methods=['POST'])
@@ -203,7 +205,7 @@ def generate_sticker_pdf():
     boxes = int(data['boxes'])
 
     # PDF settings: 8 cm × 5 cm in points (1 cm = 28.35 pts)
-    width, height = 226.8, 141.7  
+    width, height = 640, 400
 
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=(width, height))
@@ -306,6 +308,54 @@ def get_saved_data():
 @app.route('/input')
 def input_page():
     return render_template('input.html')
+
+@app.route('/update_product', methods=['POST'])
+def update_product():
+    try:
+        data = request.get_json()
+        part_no = data.get("part_no")
+        part_name = data.get("part_name")
+        customer = data.get("customer")
+        index = data.get("index")
+
+        if index is None:
+            return jsonify({"error": "Invalid request"}), 400
+
+        df = pd.read_excel(PRODUCTS_FILE)
+
+        if index < 0 or index >= len(df):
+            return jsonify({"error": "Invalid index"}), 400
+
+        df.at[index, 'part_no'] = part_no
+        df.at[index, 'part_name'] = part_name
+        df.at[index, 'customer'] = customer
+
+        df.to_excel(PRODUCTS_FILE, index=False)
+        return jsonify({"message": "Product updated successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/delete_product', methods=['POST'])
+def delete_product():
+    try:
+        data = request.get_json()
+        index = data.get("index")
+
+        if index is None:
+            return jsonify({"error": "Invalid request"}), 400
+
+        df = pd.read_excel(PRODUCTS_FILE)
+
+        if index < 0 or index >= len(df):
+            return jsonify({"error": "Invalid index"}), 400
+
+        df.drop(index, inplace=True)
+        df.to_excel(PRODUCTS_FILE, index=False)
+
+        return jsonify({"message": "Product deleted successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

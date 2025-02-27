@@ -229,54 +229,57 @@ function selectStickerProduct(partNo) {
     console.log(`Selected part number: ${partNo}`);
 }
 
-        async function generateSticker() {
-            const billNo = document.getElementById("bill_no").value;
-            const quantity = document.getElementById("quantity").value;
-            const boxes = document.getElementById("boxes").value;
-            const partNo = document.getElementById("part_no").value;
+async function generateSticker() {
+    const billNo = document.getElementById("bill_no").value;
+    const quantity = document.getElementById("quantity").value;
+    const boxes = document.getElementById("boxes").value;
+    const partNo = document.getElementById("part_no").value;
 
-            if (!billNo || !quantity || !boxes || !partNo) {
-                alert("Please enter all required fields.");
-                return;
-            }
+    if (!billNo || !quantity || !boxes || !partNo) {
+        alert("Please enter all required fields.");
+        return;
+    }
 
-            const response = await fetch(`/sticker_search?part_no=${partNo}`);
-            const data = await response.json();
+    const response = await fetch(`/sticker_search?part_no=${partNo}`);
+    const data = await response.json();
 
-            if (data.length === 0 || !data[0].part_name) {
-                alert("Part Name not found!");
-                return;
-            }
-            const partName = data[0].part_name;
+    if (data.length === 0 || !data[0].part_name) {
+        alert("Part Name not found!");
+        return;
+    }
 
-            console.log(partName);
-            const customer = data[0].customer || "Unknown Customer"; 
-            const previewContainer = document.getElementById("preview-container");
-            previewContainer.innerHTML = ""; // Clear previous previews
-            previewContainer.style.display = "block";
+    const partName = data[0].part_name;
+    const customer = data[0].customer || "Unknown Customer";  // Retrieve customer name
 
-            document.getElementById("printBtn").style.display = "block"; // Show print button
+    console.log(`Selected Customer: ${customer}`); // Debugging log
 
-            // Create an array to hold the sticker images
-            const stickerImages = [];
+    const previewContainer = document.getElementById("preview-container");
+    previewContainer.innerHTML = ""; // Clear previous previews
+    previewContainer.style.display = "block";
 
-            // Generate stickers in ascending order by box number
-            for (let i = 1; i <= boxes; i++) {
-                const img = await createStickerImage(partNo, partName, customer, billNo, quantity, boxes, i);
-                stickerImages.push(img);
-            }
+    document.getElementById("printBtn").style.display = "block"; // Show print button
 
-            // Append the images to the preview container in ascending order
-            stickerImages.forEach(img => {
-                previewContainer.appendChild(img);
-            });
-        }
+    // Create an array to hold the sticker images
+    const stickerImages = [];
+
+    // Generate stickers in ascending order by box number
+    for (let i = 1; i <= boxes; i++) {
+        const img = await createStickerImage(partNo, partName, customer, billNo, quantity, boxes, i);
+        stickerImages.push(img);
+    }
+
+    // Append the images to the preview container in ascending order
+    stickerImages.forEach(img => {
+        previewContainer.appendChild(img);
+    });
+}
+
 
         function createStickerImage(partNo, partName, customer, billNo, quantity, boxes, boxNo) {
             return new Promise((resolve) => {
                 const canvas = document.createElement("canvas");
-                canvas.width = 300;  // 8 cm width
-                canvas.height = 188; // 5 cm height
+                canvas.width = 640;  // 8cm width in 203 dpi
+                canvas.height = 400;
 
                 const ctx = canvas.getContext("2d");
 

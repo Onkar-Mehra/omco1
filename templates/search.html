@@ -12,7 +12,7 @@
             background-color: #f4f4f4;
         }
         .container {
-            max-width: 500px;
+            max-width: 800px;
             margin: auto;
             background: white;
             padding: 20px;
@@ -170,45 +170,84 @@
 
 
 function searchProduct(event) {
-    if (event) event.preventDefault(); // Prevent default form submission
+    if (event) event.preventDefault();
 
     let resultDiv = document.getElementById("search-results");
     if (!resultDiv) return;
+    
+    resultDiv.innerHTML = ""; // Clear previous results before new search
 
     let part_no_input = document.getElementById("search-part_no");
     let part_name_input = document.getElementById("search-part_name");
     let customer_input = document.getElementById("search-customer");
 
-    // Get values correctly
-    let part_no = part_no_input.getAttribute("data-selected") === "true" ? part_no_input.value : "";
-    let part_name = part_name_input.getAttribute("data-selected") === "true" ? part_name_input.value : "";
-    let customer = customer_input.getAttribute("data-selected") === "true" ? customer_input.value : "";
+    let part_no = part_no_input.value.trim();
+    let part_name = part_name_input.value.trim();
+    let customer = customer_input.value.trim();
 
     console.log("Searching with:", { part_no, part_name, customer });
 
     fetch(`/search?part_no=${encodeURIComponent(part_no)}&part_name=${encodeURIComponent(part_name)}&customer=${encodeURIComponent(customer)}`)
         .then(res => res.json())
         .then(data => {
-            console.log("Search Results:", data); // Debugging
+            console.log("Search Results:", data);
 
             if (!Array.isArray(data) || data.length === 0) {
                 resultDiv.innerHTML = "<p>No results found</p>";
                 return;
             }
 
-            let resultHTML = "<table><tr><th>SR.NO</th><th>PART NO.</th><th>PART NAME</th><th>CUSTOMER</th></tr>";
-            data.forEach((item, index) => {
-                resultHTML += `<tr>
-                    <td>${index + 1}</td>
-                    <td>${item.part_no}</td>
-                    <td>${item.part_name}</td>
-                    <td>${item.customer}</td>
-                </tr>`;
-            });
+            let resultHTML = "<table><tr><th>SR.NO</th><th>PART NO.</th><th>PART NAME</th><th>CUSTOMER</th><th>Actions</th></tr>";
+                data.forEach((item, index) => {
+    resultHTML += `<tr>
+        <td>${index + 1}</td>
+        <td><input type="text" id="part_no_${item.row_index}" value="${item.part_no}"></td>
+        <td><input type="text" id="part_name_${item.row_index}" value="${item.part_name}"></td>
+        <td><input type="text" id="customer_${item.row_index}" value="${item.customer}"></td>
+        <td>
+            <button onclick="updateProduct(${item.row_index})">Save</button>
+            <button onclick="deleteProduct(${item.row_index})" style="background-color:red;color:white;">Delete</button>
+        </td>
+    </tr>`;
+});
             resultHTML += "</table>";
             resultDiv.innerHTML = resultHTML;
         })
         .catch(error => console.error("Error fetching search results:", error));
+}
+
+function updateProduct(index) {
+    let part_no = document.getElementById(`part_no_${index}`).value;
+    let part_name = document.getElementById(`part_name_${index}`).value;
+    let customer = document.getElementById(`customer_${index}`).value;
+
+    fetch('/update_product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index, part_no, part_name, customer })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        searchProduct(); // Refresh search results after update
+    })
+    .catch(error => console.error("Error updating product:", error));
+}
+
+function deleteProduct(index) {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+
+    fetch('/delete_product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ index })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        searchProduct(); // Refresh search results after deletion
+    })
+    .catch(error => console.error("Error deleting product:", error));
 }
 
     </script>
