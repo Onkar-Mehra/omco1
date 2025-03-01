@@ -71,8 +71,8 @@
         }
 
         .preview {
-            width: 8cm;
-            height: 5cm;
+            width: 6.5cm;
+            height: 3.7cm;
             border: 1px solid black;
             padding: 10px;
             display: flex;
@@ -278,8 +278,8 @@ async function generateSticker() {
         function createStickerImage(partNo, partName, customer, billNo, quantity, boxes, boxNo) {
             return new Promise((resolve) => {
                 const canvas = document.createElement("canvas");
-                canvas.width = 640;  // 8cm width in 203 dpi
-                canvas.height = 400;
+                canvas.width = 300;  // 8 cm width
+                canvas.height = 188; // 5 cm height
 
                 const ctx = canvas.getContext("2d");
 
@@ -412,7 +412,6 @@ async function generateSticker() {
             // Proceed to print stickers
             const images = document.querySelectorAll("#preview-container img");
             const printWindow = window.open("", "_blank");
-            printWindow.document.write("<html><head><title>Print Stickers</title></head><body>");
 
             images.forEach(img => {
                 printWindow.document.write(`<div style="page-break-after: always;"><img src='${img.src}' style='width:8cm; height:5cm;'></div>`);
