@@ -363,67 +363,95 @@ async function generateSticker() {
         }
 
         async function printStickers() {
-            const partNo = document.getElementById("part_no").value;
-            const billNo = document.getElementById("bill_no").value;
-            const quantity = document.getElementById("quantity").value;
-            const boxes = document.getElementById("boxes").value;
+    const partNo = document.getElementById("part_no").value;
+    const billNo = document.getElementById("bill_no").value;
+    const quantity = document.getElementById("quantity").value;
+    const boxes = document.getElementById("boxes").value;
 
-            if (!partNo || !billNo || !quantity || !boxes) {
-                alert("Please enter all required fields.");
-                return;
-            }
+    if (!partNo || !billNo || !quantity || !boxes) {
+        alert("Please enter all required fields.");
+        return;
+    }
 
-            const response = await fetch(`/sticker_search?part_no=${partNo}`);
-            const data = await response.json();
+    const response = await fetch(`/sticker_search?part_no=${partNo}`);
+    const data = await response.json();
 
-            if (data.length === 0 || !data[0].part_name) {
-                alert("Part Name not found!");
-                return;
-            }
+    if (data.length === 0 || !data[0].part_name) {
+        alert("Part Name not found!");
+        return;
+    }
 
-            const partName = data[0].part_name;
-            const customer = data[0].customer || "Unknown Customer";
+    const partName = data[0].part_name;
+    const customer = data[0].customer || "Unknown Customer";
 
-            // Send data to backend for saving
-            try {
-                const saveResponse = await fetch('/save_sticker_data', {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        part_no: partNo,
-                        part_name: partName,
-                        customer: customer,
-                        qty: quantity,
-                        bill_no: billNo,
-                        boxes: boxes
-                    })
-                });
+    // Send data to backend for saving
+    try {
+        const saveResponse = await fetch('/save_sticker_data', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                part_no: partNo,
+                part_name: partName,
+                customer: customer,
+                qty: quantity,
+                bill_no: billNo,
+                boxes: boxes
+            })
+        });
 
-                const saveResult = await saveResponse.json();
-                if (saveResult.error) {
-                    alert("Error saving data: " + saveResult.error);
-                    return;
-                }
-            } catch (error) {
-                console.error("Error saving sticker data:", error);
-                return;
-            }
-
-            // Proceed to print stickers
-            const images = document.querySelectorAll("#preview-container img");
-            const printWindow = window.open("", "_blank");
-
-            images.forEach(img => {
-                printWindow.document.write(`<div style="page-break-after: always;"><img src='${img.src}' style='width:8cm; height:5cm;'></div>`);
-            });
-
-            printWindow.document.write("</body></html>");
-            printWindow.document.close();
-            printWindow.onload = function () {
-                printWindow.print();
-                printWindow.close();
-            };
+        const saveResult = await saveResponse.json();
+        if (saveResult.error) {
+            alert("Error saving data: " + saveResult.error);
+            return;
         }
+    } catch (error) {
+        console.error("Error saving sticker data:", error);
+        return;
+    }
+
+    // Proceed to print stickers
+    const images = document.querySelectorAll("#preview-container img");
+    const printWindow = window.open("", "_blank");
+
+    // Add print-specific CSS to the new window
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Print Stickers</title>
+                <style>
+                    @media print {
+                        body {
+                            margin: 0;
+                            padding: 0;
+                        }
+                        img {
+                            width: 8cm;
+                            height: 5cm;
+                            margin: 0;
+                            padding: 0;
+                            page-break-after: always;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+    `);
+
+    images.forEach(img => {
+        printWindow.document.write(`<img src='${img.src}'>`);
+    });
+
+    printWindow.document.write(`
+            </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.onload = function () {
+        printWindow.print();
+        printWindow.close();
+    };
+}
     </script>
 </body>
 </html>
