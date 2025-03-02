@@ -295,7 +295,7 @@ async function generateSticker() {
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                     // Draw Logo
-                    ctx.drawImage(logo, 10, 10, 90, 35);
+                    ctx.drawImage(logo, 10, 10, 70, 30);
 
                     // Text Style
                     ctx.fillStyle = "black";
@@ -311,33 +311,33 @@ async function generateSticker() {
                     // Product Details (Bold Titles, Normal Values)
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Part Name:", 20, 70);
-                    ctx.font = "14px Arial"; // Normal text for value
+                    ctx.font = "bold 14px Arial"; // Normal text for value
                     ctx.fillText(partName, 110, 70);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Part No.:", 20, 88);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(partNo, 110, 88);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Bill No.:", 20, 105);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(billNo, 110, 105);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Date:", 20, 120);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(formattedDate, 110, 120);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Qty.:", 20, 135);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(`${quantity} NOS`, 110, 135);
 
                     // Make "To:" bold but customer name normal
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("To:", 20, 150);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(`M/s ${customer}`, 70, 150);
 
                     ctx.font = "bold 14px Arial";  // Set font to bold
@@ -417,7 +417,6 @@ async function generateSticker() {
     printWindow.document.write(`
         <html>
             <head>
-                <title>Print Stickers</title>
                 <style>
                     @media print {
                         body {

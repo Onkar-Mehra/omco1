@@ -47,6 +47,11 @@
         .autocomplete-suggestions div:hover {
             background-color: #e0e0e0;
         }
+        .autocomplete-suggestions div.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        
         .button-container {
             display: flex;
             justify-content: space-between;
@@ -94,6 +99,17 @@
             background-color: #007bff;
             color: white;
         }
+        /* .active {
+    background-color: #e0e0e0;
+}
+.persist-active {
+    background-color: #e0e0e0 !important;
+} */
+.autocomplete-suggestions div.active {
+            background-color: #007bff;
+            color: white;
+        }
+
     </style>
 </head>
 <body>
@@ -102,29 +118,31 @@
         <div style="text-align: left;">
             <label style="text-align: left; font-weight: bold;">Part No.</label>
         </div>
-        <input type="text" id="search-part_no" placeholder="Enter Part No." onkeyup="getSuggestions('part_no', this.value)">
+        <input type="text" id="search-part_no" placeholder="Enter Part No." onkeyup="getSuggestions('part_no', this.value)" onkeydown="handleKeyDown(event, 'part_no')">
         <div id="suggestions-part_no" class="autocomplete-suggestions"></div>
         <div style="text-align: left;">
             <label style="text-align: left; font-weight: bold;">Part Name</label>
         </div>
-        <input type="text" id="search-part_name" placeholder="Enter Part Name" onkeyup="getSuggestions('part_name', this.value)">
+        <input type="text" id="search-part_name" placeholder="Enter Part Name" onkeyup="getSuggestions('part_name', this.value)" onkeydown="handleKeyDown(event, 'part_name')">
         <div id="suggestions-part_name" class="autocomplete-suggestions"></div>
         <div style="text-align: left;">
             <label style="text-align: left; font-weight: bold;">Customer</label>
         </div>
-        <input type="text" id="search-customer" placeholder="Enter Customer" onkeyup="getSuggestions('customer', this.value)">
+        <input type="text" id="search-customer" placeholder="Enter Customer" onkeyup="getSuggestions('customer', this.value)" onkeydown="handleKeyDown(event, 'customer')">
         <div id="suggestions-customer" class="autocomplete-suggestions"></div>
 
         <div class="button-container">
             <button class="search-btn" onclick="searchProduct(event)">Search</button>
-            <button class="back-btn" onclick="window.location.href='/dashboard'">Back to Dashboard</button>
+            <button class="back-btn" onclick="window.location.href='/'">Back to Dashboard</button>
         </div>
 
         <div id="search-results"></div>
     </div>
 
     <script>
-        function getSuggestions(field, value) {
+               let selectedIndex = -1;
+
+function getSuggestions(field, value) {
     let suggestionsDiv = document.getElementById(`suggestions-${field}`);
     if (!suggestionsDiv) return;
 
@@ -134,39 +152,112 @@
         return;
     }
 
-    console.log(`Fetching suggestions for ${field} with query:`, value);
-
-    fetch(`/suggestions?field=${field}&query=${encodeURIComponent(value)}`)
+    fetch(`/suggestions?field=${field}&query=${value}`)
         .then(res => res.json())
         .then(data => {
-            console.log("Suggestions received:", data);
             if (data.length === 0) {
                 suggestionsDiv.innerHTML = "";
                 suggestionsDiv.style.display = "none";
                 return;
             }
-
             suggestionsDiv.innerHTML = "";
             suggestionsDiv.style.display = "block";
-            data.forEach(item => {
+            data.forEach((item, index) => {
                 let div = document.createElement("div");
                 div.innerText = item;
-                div.onclick = function () {
-                    console.log("Suggestion clicked:", item);
+                div.onclick = function() {
+                    console.log("Suggestion clicked:", item); // Debugging
                     let inputField = document.getElementById(`search-${field}`);
                     if (inputField) {
-                        inputField.value = item; // Set input field with selected suggestion
-                        inputField.setAttribute("data-selected", "true"); // Store that the value was selected
+                        inputField.value = item;
+                    } else {
+                        console.error("Input field not found for ID:", `search-${field}`);
                     }
                     suggestionsDiv.innerHTML = "";
                     suggestionsDiv.style.display = "none";
                 };
+                if (index === selectedIndex) {
+                    div.classList.add("selected");
+                }
                 suggestionsDiv.appendChild(div);
             });
-        })
-        .catch(error => console.error("Error fetching suggestions:", error));
+        });
 }
 
+function handleKeyDown(event, field) {
+    let suggestionsDiv = document.getElementById(`suggestions-${field}`);
+    if (!suggestionsDiv) return;
+
+    let suggestions = suggestionsDiv.getElementsByTagName("div");
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (selectedIndex < suggestions.length - 1) {
+            selectedIndex++;
+            updateSelection(suggestions);
+            scrollIntoView(suggestions[selectedIndex], suggestionsDiv);
+        }
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (selectedIndex > 0) {
+            selectedIndex--;
+            updateSelection(suggestions);
+            scrollIntoView(suggestions[selectedIndex], suggestionsDiv);
+        }
+    } else if (event.key === "Enter") {
+        event.preventDefault();
+        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+            let selectedSuggestion = suggestions[selectedIndex].innerText;
+            let inputField = document.getElementById(`search-${field}`);
+            if (inputField) {
+                inputField.value = selectedSuggestion;
+            }
+            suggestionsDiv.innerHTML = "";
+            suggestionsDiv.style.display = "none";
+        }
+    }
+}
+
+function updateSelection(suggestions) {
+    for (let i = 0; i < suggestions.length; i++) {
+        if (i === selectedIndex) {
+            suggestions[i].classList.add("selected");
+        } else {
+            suggestions[i].classList.remove("selected");
+        }
+    }
+}
+
+function scrollIntoView(element, container) {
+    if (element.offsetTop < container.scrollTop) {
+        // Scroll up if the element is above the visible area
+        container.scrollTop = element.offsetTop;
+    } else if (element.offsetTop + element.offsetHeight > container.scrollTop + container.clientHeight) {
+        // Scroll down if the element is below the visible area
+        container.scrollTop = element.offsetTop + element.offsetHeight - container.clientHeight;
+    }
+}
+// function setActiveSuggestion(suggestions, index) {
+//     // Remove active class from all suggestions
+//     for (let i = 0; i < suggestions.length; i++) {
+//         suggestions[i].classList.remove("active", "persist-active");
+//     }
+
+//     // If index is valid, highlight the selected suggestion
+//     if (index >= 0 && index < suggestions.length) {
+//         suggestions[index].classList.add("active", "persist-active");
+//         suggestions[index].scrollIntoView({ block: "nearest" });
+//     }
+// }
+
+// // Ensure active state persists when arrow keys are released
+// document.addEventListener("keyup", function (event) {
+//     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+//         let activeElement = document.querySelector(".autocomplete-suggestions .active");
+//         if (activeElement) {
+//             activeElement.classList.add("persist-active");
+//         }
+//     }
+// });
 
 
 function searchProduct(event) {
