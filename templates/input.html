@@ -189,74 +189,90 @@
         function createStickerImage(partNo, partName, customer, billNo, quantity, boxes, boxNo) {
             return new Promise((resolve) => {
                 const canvas = document.createElement("canvas");
-                canvas.width = 300;  
-                canvas.height = 188;  
+                canvas.width = 300;  // 8 cm width
+                canvas.height = 188; // 5 cm height
 
                 const ctx = canvas.getContext("2d");
 
                 const logo = new Image();
-                logo.src = "/static/logo.png";  
+                logo.src = "static/logo.png";  // Ensure the image is in the correct directory
                 const now = new Date();
-                const formattedDate = now.toLocaleDateString("en-GB");
-                const formattedTime = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                const formattedDate = now.toLocaleDateString("en-GB");  // Format: DD/MM/YYYY
+                const formattedTime = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); // Format: HH:MM
 
                 logo.onload = function () {
+                    // Background
                     ctx.fillStyle = "white";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(logo, 10, 10, 90, 35);
 
+                    // Draw Logo
+                    ctx.drawImage(logo, 0, 0, 100, 58);
+
+                    // Text Style
                     ctx.fillStyle = "black";
                     ctx.font = "bold 13px Arial";
 
+                    // Company Name with Underline
                     ctx.fillText("OMCO ENTERPRISES PVT. LTD.", 100, 30);
                     ctx.beginPath();
                     ctx.moveTo(100, 32);
                     ctx.lineTo(300, 32);
                     ctx.stroke();
 
+                    // Product Details (Bold Titles, Normal Values)
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Part Name:", 20, 70);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial"; // Normal text for value
                     ctx.fillText(partName, 110, 70);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Part No.:", 20, 88);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(partNo, 110, 88);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Bill No.:", 20, 105);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(billNo, 110, 105);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Date:", 20, 120);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(formattedDate, 110, 120);
 
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("Qty.:", 20, 135);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(`${quantity} NOS`, 110, 135);
 
+                    // Make "To:" bold but customer name normal
                     ctx.font = "bold 14px Arial";
                     ctx.fillText("To:", 20, 150);
-                    ctx.font = "14px Arial";
+                    ctx.font = "bold 14px Arial";
                     ctx.fillText(`M/s ${customer}`, 70, 150);
 
-                    ctx.font = "bold 14px Arial";
+                    ctx.font = "bold 14px Arial";  // Set font to bold
                     const boxText = `Box No. ${boxNo} of ${boxes}`;
                     ctx.fillText(boxText, 20, 180);
 
-                    ctx.fillText(`${formattedTime}`, 230, 180);
+                    // Measure width of "Box No." text to determine spacing
+                    const boxTextWidth = ctx.measureText(boxText).width;
 
+                    // Set font back to normal for time
+                    ctx.font = "bold 14px Arial";
+                    ctx.fillText(`${formattedTime}`, 80 + boxTextWidth, 180);
+
+                    // Convert Canvas to Image
                     const img = new Image();
                     img.src = canvas.toDataURL();
                     img.classList.add("preview");
+
+                    // Resolve the promise with the image
                     resolve(img);
                 };
             });
         }
+
     </script>
 
 </body>

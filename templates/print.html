@@ -140,7 +140,33 @@
             transform: translateY(-5px);
             box-shadow: 4px 6px 15px rgba(0, 0, 0, 0.15);
         }
+        
+        .autocomplete-suggestions {
+    position: absolute;
+    width: calc(100% - 20px);
+    background: white;
+    border: 1px solid #ddd;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's above other elements */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    display: none;
+}
 
+.autocomplete-suggestions div {
+    padding: 10px;
+    cursor: pointer; /* Ensure the cursor changes to pointer */
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.autocomplete-suggestions div:hover {
+    background-color: #e0e0e0;
+}
+
+.autocomplete-suggestions div.selected {
+    background-color: #007bff;
+    color: white;
+}
     </style>
 </head>
 <body>
@@ -150,11 +176,8 @@
         <h2 style="text-align: center; text-decoration: underline;">Preview & Print</h2>
         
         <label style="font-weight: bold;">Part No.</label>
-        <label style="font-weight: bold;">Part No.</label>
-        <input type="text" id="part_no" onkeyup="searchStickerProduct()" placeholder="Enter Part No.">
-        <!-- The suggestions dropdown must be here -->
-        <div id="searchResults"></div>
-
+<input type="text" id="search-part_no" placeholder="Enter Part No." onkeyup="getSuggestions('part_no', this.value)" onkeydown="handleKeyDown(event, 'part_no')">
+<div id="suggestions-part_no" class="autocomplete-suggestions"></div>
 
         <label style="font-weight: bold;">Bill Number</label>
         <input type="text" id="bill_no" placeholder="Enter Bill Number">
@@ -179,6 +202,127 @@
     </div>
 
     <script>
+        let selectedIndex = -1;
+let isSuggestionSelected = false; // Flag to track if a suggestion is selected
+
+function getSuggestions(field, value) {
+    let suggestionsDiv = document.getElementById(`suggestions-${field}`);
+    if (!suggestionsDiv) return;
+
+    // If a suggestion has been selected, do not show the dropdown again
+    if (isSuggestionSelected) {
+        suggestionsDiv.style.display = "none";
+        return;
+    }
+
+    if (value.length < 2) {
+        suggestionsDiv.innerHTML = "";
+        suggestionsDiv.style.display = "none";
+        return;
+    }
+
+    fetch(`/suggestions?field=${field}&query=${value}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.length === 0) {
+                suggestionsDiv.innerHTML = "";
+                suggestionsDiv.style.display = "none";
+                return;
+            }
+            suggestionsDiv.innerHTML = "";
+            suggestionsDiv.style.display = "block";
+            data.forEach((item, index) => {
+                let div = document.createElement("div");
+                div.innerText = item;
+                div.onclick = function () {
+                    console.log("Suggestion clicked:", item); // Debugging
+                    let inputField = document.getElementById(`search-${field}`);
+                    if (inputField) {
+                        inputField.value = item;
+                        inputField.focus(); // Optional: Keep focus on the input field
+                        isSuggestionSelected = true; // Set the flag to true
+                    } else {
+                        console.error("Input field not found for ID:", `search-${field}`);
+                    }
+                    suggestionsDiv.innerHTML = "";
+                    suggestionsDiv.style.display = "none"; // Hide the dropdown
+                };
+                if (index === selectedIndex) {
+                    div.classList.add("selected");
+                }
+                suggestionsDiv.appendChild(div);
+            });
+
+            // Hide dropdown when input loses focus
+            let inputField = document.getElementById(`search-${field}`);
+            if (inputField) {
+                inputField.onblur = function () {
+                    suggestionsDiv.style.display = "none";
+                };
+            }
+        });
+}
+// Reset the flag when the user starts typing again
+document.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", function () {
+        let field = this.id.replace("search-", "");
+        isSuggestionSelected = false; // Reset the flag when typing starts
+    });
+});
+
+function handleKeyDown(event, field) {
+    let suggestionsDiv = document.getElementById(`suggestions-${field}`);
+    if (!suggestionsDiv) return;
+
+    let suggestions = suggestionsDiv.getElementsByTagName("div");
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (selectedIndex < suggestions.length - 1) {
+            selectedIndex++;
+            updateSelection(suggestions);
+            scrollIntoView(suggestions[selectedIndex], suggestionsDiv);
+        }
+    } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (selectedIndex > 0) {
+            selectedIndex--;
+            updateSelection(suggestions);
+            scrollIntoView(suggestions[selectedIndex], suggestionsDiv);
+        }
+    } else if (event.key === "Enter") {
+        event.preventDefault();
+        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
+            let selectedSuggestion = suggestions[selectedIndex].innerText;
+            let inputField = document.getElementById(`search-${field}`);
+            if (inputField) {
+                inputField.value = selectedSuggestion;
+                inputField.focus(); // Keep focus on the input field
+                isSuggestionSelected = true; // Set the flag to true
+            }
+            suggestionsDiv.innerHTML = "";
+            suggestionsDiv.style.display = "none"; // Hide the dropdown
+        }
+    }
+}
+function updateSelection(suggestions) {
+    for (let i = 0; i < suggestions.length; i++) {
+        if (i === selectedIndex) {
+            suggestions[i].classList.add("selected");
+        } else {
+            suggestions[i].classList.remove("selected");
+        }
+    }
+}
+
+function scrollIntoView(element, container) {
+    if (element.offsetTop < container.scrollTop) {
+        // Scroll up if the element is above the visible area
+        container.scrollTop = element.offsetTop;
+    } else if (element.offsetTop + element.offsetHeight > container.scrollTop + container.clientHeight) {
+        // Scroll down if the element is below the visible area
+        container.scrollTop = element.offsetTop + element.offsetHeight - container.clientHeight;
+    }
+}
 function searchStickerProduct() {
     const partNo = document.getElementById("part_no").value;
     const resultsDiv = document.getElementById("searchResults");
@@ -224,8 +368,8 @@ function searchStickerProduct() {
 }
 
 function selectStickerProduct(partNo) {
-    document.getElementById("part_no").value = partNo;
-    document.getElementById("searchResults").style.display = "none"; // Hide suggestions after selection
+    document.getElementById("search-part_no").value = partNo; // Update the new input field
+    document.getElementById("suggestions-part_no").style.display = "none"; // Hide suggestions after selection
     console.log(`Selected part number: ${partNo}`);
 }
 
@@ -233,7 +377,7 @@ async function generateSticker() {
     const billNo = document.getElementById("bill_no").value;
     const quantity = document.getElementById("quantity").value;
     const boxes = document.getElementById("boxes").value;
-    const partNo = document.getElementById("part_no").value;
+    const partNo = document.getElementById("search-part_no").value; // Use the new input field
 
     if (!billNo || !quantity || !boxes || !partNo) {
         alert("Please enter all required fields.");
@@ -274,7 +418,6 @@ async function generateSticker() {
     });
 }
 
-
         function createStickerImage(partNo, partName, customer, billNo, quantity, boxes, boxNo) {
             return new Promise((resolve) => {
                 const canvas = document.createElement("canvas");
@@ -295,7 +438,7 @@ async function generateSticker() {
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                     // Draw Logo
-                    ctx.drawImage(logo, 10, 10, 70, 30);
+                    ctx.drawImage(logo, 0, 0, 100, 58);
 
                     // Text Style
                     ctx.fillStyle = "black";

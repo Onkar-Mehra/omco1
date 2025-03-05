@@ -29,24 +29,26 @@
             font-size: 16px;
         }
         .autocomplete-suggestions {
-            position: absolute;
-            width: 94%;
-            background: white;
-            border: 1px solid #ddd;
-            max-height: 150px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-            display: none;
-        }
-        .autocomplete-suggestions div {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .autocomplete-suggestions div:hover {
-            background-color: #e0e0e0;
-        }
+    position: absolute;
+    width: 94%;
+    background: white;
+    border: 1px solid #ddd;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it's above other elements */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+.autocomplete-suggestions div {
+    padding: 10px;
+    cursor: pointer; /* Ensure the cursor changes to pointer */
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.autocomplete-suggestions div:hover {
+    background-color: #e0e0e0;
+}
         .autocomplete-suggestions div.selected {
             background-color: #007bff;
             color: white;
@@ -140,11 +142,18 @@
     </div>
 
     <script>
-               let selectedIndex = -1;
+let selectedIndex = -1;
+let isSuggestionSelected = false; // Flag to track if a suggestion is selected
 
 function getSuggestions(field, value) {
     let suggestionsDiv = document.getElementById(`suggestions-${field}`);
     if (!suggestionsDiv) return;
+
+    // If a suggestion has been selected, do not show the dropdown again
+    if (isSuggestionSelected) {
+        suggestionsDiv.style.display = "none";
+        return;
+    }
 
     if (value.length < 2) {
         suggestionsDiv.innerHTML = "";
@@ -165,24 +174,42 @@ function getSuggestions(field, value) {
             data.forEach((item, index) => {
                 let div = document.createElement("div");
                 div.innerText = item;
-                div.onclick = function() {
+                div.onclick = function () {
                     console.log("Suggestion clicked:", item); // Debugging
                     let inputField = document.getElementById(`search-${field}`);
                     if (inputField) {
                         inputField.value = item;
+                        inputField.focus(); // Optional: Keep focus on the input field
+                        isSuggestionSelected = true; // Set the flag to true
                     } else {
                         console.error("Input field not found for ID:", `search-${field}`);
                     }
                     suggestionsDiv.innerHTML = "";
-                    suggestionsDiv.style.display = "none";
+                    suggestionsDiv.style.display = "none"; // Hide the dropdown
                 };
                 if (index === selectedIndex) {
                     div.classList.add("selected");
                 }
                 suggestionsDiv.appendChild(div);
             });
+
+            // Hide dropdown when input loses focus
+            let inputField = document.getElementById(`search-${field}`);
+            if (inputField) {
+                inputField.onblur = function () {
+                    suggestionsDiv.style.display = "none";
+                };
+            }
         });
 }
+
+// Reset the flag when the user starts typing again
+document.querySelectorAll("input").forEach(input => {
+    input.addEventListener("input", function () {
+        let field = this.id.replace("search-", "");
+        isSuggestionSelected = false; // Reset the flag when typing starts
+    });
+});
 
 function handleKeyDown(event, field) {
     let suggestionsDiv = document.getElementById(`suggestions-${field}`);
@@ -210,9 +237,11 @@ function handleKeyDown(event, field) {
             let inputField = document.getElementById(`search-${field}`);
             if (inputField) {
                 inputField.value = selectedSuggestion;
+                inputField.focus(); // Keep focus on the input field
+                isSuggestionSelected = true; // Set the flag to true
             }
             suggestionsDiv.innerHTML = "";
-            suggestionsDiv.style.display = "none";
+            suggestionsDiv.style.display = "none"; // Hide the dropdown
         }
     }
 }
@@ -236,29 +265,6 @@ function scrollIntoView(element, container) {
         container.scrollTop = element.offsetTop + element.offsetHeight - container.clientHeight;
     }
 }
-// function setActiveSuggestion(suggestions, index) {
-//     // Remove active class from all suggestions
-//     for (let i = 0; i < suggestions.length; i++) {
-//         suggestions[i].classList.remove("active", "persist-active");
-//     }
-
-//     // If index is valid, highlight the selected suggestion
-//     if (index >= 0 && index < suggestions.length) {
-//         suggestions[index].classList.add("active", "persist-active");
-//         suggestions[index].scrollIntoView({ block: "nearest" });
-//     }
-// }
-
-// // Ensure active state persists when arrow keys are released
-// document.addEventListener("keyup", function (event) {
-//     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-//         let activeElement = document.querySelector(".autocomplete-suggestions .active");
-//         if (activeElement) {
-//             activeElement.classList.add("persist-active");
-//         }
-//     }
-// });
-
 
 function searchProduct(event) {
     if (event) event.preventDefault();
@@ -289,18 +295,18 @@ function searchProduct(event) {
             }
 
             let resultHTML = "<table><tr><th>SR.NO</th><th>PART NO.</th><th>PART NAME</th><th>CUSTOMER</th><th>Actions</th></tr>";
-                data.forEach((item, index) => {
-    resultHTML += `<tr>
-        <td>${index + 1}</td>
-        <td><input type="text" id="part_no_${item.row_index}" value="${item.part_no}"></td>
-        <td><input type="text" id="part_name_${item.row_index}" value="${item.part_name}"></td>
-        <td><input type="text" id="customer_${item.row_index}" value="${item.customer}"></td>
-        <td>
-            <button onclick="updateProduct(${item.row_index})">Save</button>
-            <button onclick="deleteProduct(${item.row_index})" style="background-color:red;color:white;">Delete</button>
-        </td>
-    </tr>`;
-});
+            data.forEach((item, index) => {
+                resultHTML += `<tr>
+                    <td>${index + 1}</td>
+                    <td><input type="text" id="part_no_${item.row_index}" value="${item.part_no}"></td>
+                    <td><input type="text" id="part_name_${item.row_index}" value="${item.part_name}"></td>
+                    <td><input type="text" id="customer_${item.row_index}" value="${item.customer}"></td>
+                    <td>
+                        <button onclick="updateProduct(${item.row_index})">Save</button>
+                        <button onclick="deleteProduct(${item.row_index})" style="background-color:red;color:white;">Delete</button>
+                    </td>
+                </tr>`;
+            });
             resultHTML += "</table>";
             resultDiv.innerHTML = resultHTML;
         })
@@ -340,7 +346,6 @@ function deleteProduct(index) {
     })
     .catch(error => console.error("Error deleting product:", error));
 }
-
     </script>
 </body>
 </html>
