@@ -427,7 +427,9 @@ async function generateSticker() {
                 const ctx = canvas.getContext("2d");
 
                 const logo = new Image();
-                logo.src = "static/Logo.svg";  // Ensure the image is in the correct directory
+                logo.src = "static/logo1.png";  // Ensure the image is in the correct directory
+                const logo1= new Image();
+                logo1.src= "static/logo2.png";
                 const now = new Date();
                 const formattedDate = now.toLocaleDateString("en-GB");  // Format: DD/MM/YYYY
                 const formattedTime = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); // Format: HH:MM
@@ -438,7 +440,8 @@ async function generateSticker() {
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                     // Draw Logo
-                    ctx.drawImage(logo, 0, 0, 130, 60);
+                    ctx.drawImage(logo, 0, 0, 110, 30);
+                    ctx.drawImage(logo1,25,32,90,25);
 
                     // Text Style
                     ctx.fillStyle = "black";
@@ -453,46 +456,46 @@ async function generateSticker() {
 
                     // Product Details (Bold Titles, Normal Values)
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText("Part Name:", 20, 75);
+                    ctx.fillText("Part Name:", 20, 80);
                     ctx.font = "bold 16px Arial"; // Normal text for value
-                    ctx.fillText(partName, 110, 75);
+                    ctx.fillText(partName, 110, 80);
 
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText("Part No.:", 20, 93);
+                    ctx.fillText("Part No.:", 20, 98);
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText(partNo, 110, 93);
+                    ctx.fillText(partNo, 110, 98);
 
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText("Bill No.:", 20, 110);
+                    ctx.fillText("Bill No.:", 20, 115);
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText(billNo, 110, 110);
+                    ctx.fillText(billNo, 110, 115);
 
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText("Date:", 20, 125);
+                    ctx.fillText("Date:", 20, 130);
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText(formattedDate, 110, 125);
+                    ctx.fillText(formattedDate, 110, 130);
 
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText("Qty.:", 20, 140);
+                    ctx.fillText("Qty.:", 20, 145);
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText(`${quantity} NOS`, 110, 140);
+                    ctx.fillText(`${quantity} NOS`, 110, 145);
 
                     // Make "To:" bold but customer name normal
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText("To:", 20, 155);
+                    ctx.fillText("To:", 20, 160);
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText(`M/s ${customer}`, 70, 155);
+                    ctx.fillText(`M/s ${customer}`, 70, 160);
 
                     ctx.font = "bold 16px Arial";  // Set font to bold
                     const boxText = `Box No. ${boxNo} of ${boxes}`;
-                    ctx.fillText(boxText, 20, 183);
+                    ctx.fillText(boxText, 20, 188);
 
                     // Measure width of "Box No." text to determine spacing
                     const boxTextWidth = ctx.measureText(boxText).width;
 
                     // Set font back to normal for time
                     ctx.font = "bold 16px Arial";
-                    ctx.fillText(`${formattedTime}`, 80 + boxTextWidth, 183);
+                    ctx.fillText(`${formattedTime}`, 80 + boxTextWidth, 188);
 
                     // Convert Canvas to Image
                     const img = new Image();
